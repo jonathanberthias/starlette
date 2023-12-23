@@ -446,7 +446,7 @@ def test_chunked_encoding(test_client_factory):
         yield b"foo"
         yield b"bar"
 
-    response = client.post("/", data=post_body())
+    response = client.post("/", content=post_body())
     assert response.json() == {"body": "foobar"}
 
 

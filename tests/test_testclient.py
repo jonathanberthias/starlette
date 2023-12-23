@@ -42,10 +42,6 @@ def current_task():
     raise RuntimeError(f"unsupported asynclib={asynclib_name}")  # pragma: no cover
 
 
-def startup():
-    raise RuntimeError()
-
-
 def test_use_testclient_in_endpoint(test_client_factory: Callable[..., TestClient]):
     """
     We should be able to use the test client within applications.
@@ -165,11 +161,13 @@ def test_use_testclient_as_contextmanager(
     assert first_task is not startup_task
 
 
-def test_error_on_startup(test_client_factory: Callable[..., TestClient]):
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        startup_error_app = Starlette(on_startup=[startup])
+def test_error_on_startup(test_client_factory):
+    @asynccontextmanager
+    async def lifespan(app: Starlette):
+        raise RuntimeError
+        yield None  # pragma: no cover
+
+    startup_error_app = Starlette(lifespan=lifespan)
 
     with pytest.raises(RuntimeError):
         with test_client_factory(startup_error_app):

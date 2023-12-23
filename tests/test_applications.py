@@ -333,35 +333,6 @@ def test_app_add_websocket_route(test_client_factory):
         assert text == "Hello, world!"
 
 
-def test_app_add_event_handler(test_client_factory):
-    startup_complete = False
-    cleanup_complete = False
-
-    def run_startup():
-        nonlocal startup_complete
-        startup_complete = True
-
-    def run_cleanup():
-        nonlocal cleanup_complete
-        cleanup_complete = True
-
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        app = Starlette(
-            on_startup=[run_startup],
-            on_shutdown=[run_cleanup],
-        )
-
-    assert not startup_complete
-    assert not cleanup_complete
-    with test_client_factory(app):
-        assert startup_complete
-        assert not cleanup_complete
-    assert startup_complete
-    assert cleanup_complete
-
-
 def test_app_async_cm_lifespan(test_client_factory):
     startup_complete = False
     cleanup_complete = False
@@ -435,63 +406,6 @@ def test_app_sync_gen_lifespan(test_client_factory):
         assert not cleanup_complete
     assert startup_complete
     assert cleanup_complete
-
-
-def test_decorator_deprecations() -> None:
-    app = Starlette()
-
-    with pytest.deprecated_call(
-        match=(
-            "The `exception_handler` decorator is deprecated, "
-            "and will be removed in version 1.0.0."
-        )
-    ) as record:
-        app.exception_handler(500)(http_exception)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=(
-            "The `middleware` decorator is deprecated, "
-            "and will be removed in version 1.0.0."
-        )
-    ) as record:
-
-        async def middleware(request, call_next):
-            ...  # pragma: no cover
-
-        app.middleware("http")(middleware)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=(
-            "The `route` decorator is deprecated, "
-            "and will be removed in version 1.0.0."
-        )
-    ) as record:
-        app.route("/")(async_homepage)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=(
-            "The `websocket_route` decorator is deprecated, "
-            "and will be removed in version 1.0.0."
-        )
-    ) as record:
-        app.websocket_route("/ws")(websocket_endpoint)
-        assert len(record) == 1
-
-    with pytest.deprecated_call(
-        match=(
-            "The `on_event` decorator is deprecated, "
-            "and will be removed in version 1.0.0."
-        )
-    ) as record:
-
-        async def startup():
-            ...  # pragma: no cover
-
-        app.on_event("startup")(startup)
-        assert len(record) == 1
 
 
 def test_middleware_stack_init(test_client_factory: Callable[[ASGIApp], httpx.Client]):

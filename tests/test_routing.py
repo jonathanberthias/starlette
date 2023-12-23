@@ -629,121 +629,11 @@ def test_standalone_ws_route_does_not_match(test_client_factory):
             pass  # pragma: nocover
 
 
-def test_lifespan_async(test_client_factory):
-    startup_complete = False
-    shutdown_complete = False
-
-    async def hello_world(request):
-        return PlainTextResponse("hello, world")
-
-    async def run_startup():
-        nonlocal startup_complete
-        startup_complete = True
-
-    async def run_shutdown():
-        nonlocal shutdown_complete
-        shutdown_complete = True
-
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        app = Router(
-            on_startup=[run_startup],
-            on_shutdown=[run_shutdown],
-            routes=[Route("/", hello_world)],
-        )
-
-    assert not startup_complete
-    assert not shutdown_complete
-    with test_client_factory(app) as client:
-        assert startup_complete
-        assert not shutdown_complete
-        client.get("/")
-    assert startup_complete
-    assert shutdown_complete
-
-
-def test_lifespan_with_on_events(test_client_factory: typing.Callable[..., TestClient]):
-    lifespan_called = False
-    startup_called = False
-    shutdown_called = False
-
+def test_lifespan_state_unsupported(
+    test_client_factory: typing.Callable[..., TestClient]
+):
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette):
-        nonlocal lifespan_called
-        lifespan_called = True
-        yield
-
-    # We do not expected, neither of run_startup nor run_shutdown to be called
-    # we thus mark them as #pragma: no cover, to fulfill test coverage
-    def run_startup():  # pragma: no cover
-        nonlocal startup_called
-        startup_called = True
-
-    def run_shutdown():  # pragma: no cover
-        nonlocal shutdown_called
-        shutdown_called = True
-
-    with pytest.warns(
-        UserWarning,
-        match=(
-            "The `lifespan` parameter cannot be used with `on_startup` or `on_shutdown`."  # noqa: E501
-        ),
-    ):
-        app = Router(
-            on_startup=[run_startup], on_shutdown=[run_shutdown], lifespan=lifespan
-        )
-
-        assert not lifespan_called
-        assert not startup_called
-        assert not shutdown_called
-
-        # Triggers the lifespan events
-        with test_client_factory(app):
-            ...
-
-        assert lifespan_called
-        assert not startup_called
-        assert not shutdown_called
-
-
-def test_lifespan_sync(test_client_factory):
-    startup_complete = False
-    shutdown_complete = False
-
-    def hello_world(request):
-        return PlainTextResponse("hello, world")
-
-    def run_startup():
-        nonlocal startup_complete
-        startup_complete = True
-
-    def run_shutdown():
-        nonlocal shutdown_complete
-        shutdown_complete = True
-
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        app = Router(
-            on_startup=[run_startup],
-            on_shutdown=[run_shutdown],
-            routes=[Route("/", hello_world)],
-        )
-
-    assert not startup_complete
-    assert not shutdown_complete
-    with test_client_factory(app) as client:
-        assert startup_complete
-        assert not shutdown_complete
-        client.get("/")
-    assert startup_complete
-    assert shutdown_complete
-
-
-def test_lifespan_state_unsupported(test_client_factory):
-    @contextlib.asynccontextmanager
-    async def lifespan(app):
         yield {"foo": "bar"}
 
     app = Router(
@@ -751,7 +641,7 @@ def test_lifespan_state_unsupported(test_client_factory):
         routes=[Mount("/", PlainTextResponse("hello, world"))],
     )
 
-    async def no_state_wrapper(scope, receive, send):
+    async def no_state_wrapper(scope: Scope, receive: Receive, send: Send):
         del scope["state"]
         await app(scope, receive, send)
 
@@ -810,45 +700,6 @@ def test_lifespan_state_async_cm(test_client_factory):
     assert shutdown_complete
 
 
-def test_raise_on_startup(test_client_factory):
-    def run_startup():
-        raise RuntimeError()
-
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        router = Router(on_startup=[run_startup])
-    startup_failed = False
-
-    async def app(scope, receive, send):
-        async def _send(message):
-            nonlocal startup_failed
-            if message["type"] == "lifespan.startup.failed":
-                startup_failed = True
-            return await send(message)
-
-        await router(scope, receive, _send)
-
-    with pytest.raises(RuntimeError):
-        with test_client_factory(app):
-            pass  # pragma: nocover
-    assert startup_failed
-
-
-def test_raise_on_shutdown(test_client_factory):
-    def run_shutdown():
-        raise RuntimeError()
-
-    with pytest.deprecated_call(
-        match="The on_startup and on_shutdown parameters are deprecated"
-    ):
-        app = Router(on_shutdown=[run_shutdown])
-
-    with pytest.raises(RuntimeError):
-        with test_client_factory(app):
-            pass  # pragma: nocover
-
-
 def test_partial_async_endpoint(test_client_factory):
     test_client = test_client_factory(app)
     response = test_client.get("/partial")
@@ -883,6 +734,43 @@ def test_duplicated_param_names():
         match="Duplicated param names id, name at path /{id}/{name}/{id}/{name}",
     ):
         Route("/{id}/{name}/{id}/{name}", user)
+
+
+def test_raise_on_startup(test_client_factory: typing.Callable[..., TestClient]):
+    @contextlib.asynccontextmanager
+    async def lifespan(app: Starlette):
+        raise RuntimeError
+        yield None  # pragma: no cover
+
+    router = Router(lifespan=lifespan)
+    startup_failed = False
+
+    async def app(scope: Scope, receive: Receive, send: Send):
+        async def _send(message: Message):
+            nonlocal startup_failed
+            if message["type"] == "lifespan.startup.failed":
+                startup_failed = True
+            return await send(message)
+
+        await router(scope, receive, _send)
+
+    with pytest.raises(RuntimeError):
+        with test_client_factory(app):
+            pass  # pragma: no cover
+    assert startup_failed
+
+
+def test_raise_on_shutdown(test_client_factory: typing.Callable[..., TestClient]):
+    @contextlib.asynccontextmanager
+    async def lifespan(app: Starlette):
+        yield None
+        raise RuntimeError()
+
+    app = Router(lifespan=lifespan)
+
+    with pytest.raises(RuntimeError):
+        with test_client_factory(app):
+            pass  # pragma: no cover
 
 
 class Endpoint:
@@ -1214,23 +1102,6 @@ def test_host_named_repr() -> None:
     )
     # test for substring because repr(Router) returns unique object ID
     assert repr(route).startswith("Host(host='example.com', name='app', app=")
-
-
-def test_decorator_deprecations() -> None:
-    router = Router()
-
-    with pytest.deprecated_call():
-        router.route("/")(homepage)
-
-    with pytest.deprecated_call():
-        router.websocket_route("/ws")(websocket_endpoint)
-
-    with pytest.deprecated_call():
-
-        async def startup() -> None:
-            ...  # pragma: nocover
-
-        router.on_event("startup")(startup)
 
 
 async def echo_paths(request: Request, name: str):
