@@ -127,7 +127,7 @@ def test_templates_require_directory_or_environment():
     with pytest.raises(
         AssertionError, match="either 'directory' or 'env' arguments must be passed"
     ):
-        Jinja2Templates()  # type: ignore[call-overload]
+        Jinja2Templates()
 
 
 def test_templates_with_directory(tmpdir):
@@ -159,11 +159,6 @@ def test_templates_with_environment(tmpdir, test_client_factory):
     assert response.text == "<html>Hello, <a href='http://testserver/'>world</a></html>"
     assert response.template.name == "index.html"
     assert set(response.context.keys()) == {"request"}
-
-
-def test_templates_with_environment_options_emit_warning(tmpdir):
-    with pytest.warns(DeprecationWarning):
-        Jinja2Templates(str(tmpdir), autoescape=True)
 
 
 def test_templates_with_kwargs_only(tmpdir, test_client_factory):
