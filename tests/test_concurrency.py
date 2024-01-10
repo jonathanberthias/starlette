@@ -12,7 +12,7 @@ from starlette.testclient import TestClient
 
 
 def test_accessing_context_from_threaded_sync_endpoint(
-    test_client_factory: Callable[..., TestClient]
+    test_client_factory: Callable[..., TestClient],
 ) -> None:
     ctxvar: ContextVar[bytes] = ContextVar("ctxvar")
     ctxvar.set(b"data")

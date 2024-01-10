@@ -630,7 +630,7 @@ def test_standalone_ws_route_does_not_match(test_client_factory):
 
 
 def test_lifespan_state_unsupported(
-    test_client_factory: typing.Callable[..., TestClient]
+    test_client_factory: typing.Callable[..., TestClient],
 ):
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette):
