@@ -14,6 +14,25 @@ All deprecated features have been removed.
 * Removed `ExceptionMiddleware` from the `exceptions` module, it can now be found in the `middleware.exceptions` module.
 * Removed multiple possible argument sequences from `TemplateResponse`.
 
+## 0.36.1
+
+January 23, 2024
+
+#### Fixed
+
+* Check if "extensions" in scope before checking the extension [#2438](http://github.com/encode/starlette/pull/2438).
+
+## 0.36.0
+
+January 22, 2024
+
+#### Added
+
+* Add support for ASGI `pathsend` extension [#2435](http://github.com/encode/starlette/pull/2435).
+* Cancel `WebSocketTestSession` on close [#2427](http://github.com/encode/starlette/pull/2427).
+* Raise `WebSocketDisconnect` when `WebSocket.send()` excepts `IOError` [#2425](http://github.com/encode/starlette/pull/2425).
+* Raise `FileNotFoundError` when the `env_file` parameter on `Config` is not valid [#2422](http://github.com/encode/starlette/pull/2422).
+
 ## 0.35.1
 
 January 11, 2024
@@ -190,7 +209,7 @@ March 9, 2023
 March 9, 2023
 
 ### Added
-* Support [lifespan state](/lifespan/) [#2060](https://github.com/encode/starlette/pull/2060),
+* Support [lifespan state](lifespan.md) [#2060](https://github.com/encode/starlette/pull/2060),
   [#2065](https://github.com/encode/starlette/pull/2065) and [#2064](https://github.com/encode/starlette/pull/2064).
 
 ### Changed
